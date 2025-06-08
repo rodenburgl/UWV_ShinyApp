@@ -64,7 +64,7 @@ def create_plot(categories: list, totalincluded: bool, frequency: str, period: t
     handles, labels = ax.get_legend_handles_labels()
     ax_legend.legend(handles, labels, loc='upper left', ncol=legend_columns)
 
-    fig = fig.tight_layout()
+    fig.tight_layout()
     ax.set_xticklabels(ax.get_xticklabels(), fontsize=6)  # Change fontsize to 12
 
 
