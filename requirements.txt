@@ -1,0 +1,11 @@
+pandas
+requests
+ipykernel
+matplotlib
+cbsodata
+openpyxl
+shiny
+skforecast
+faicons
+pylint
+dotenv

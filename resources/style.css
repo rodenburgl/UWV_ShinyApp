@@ -1,0 +1,41 @@
+.title {
+    display: inline-block;
+    font-size: large;
+    vertical-align: middle;
+    color: #0f61a4;
+    font-weight: bold;
+    margin-left: 10px;
+}
+
+.numeric_cols {
+    text-align: right;
+}
+
+.text_cols {
+    text-align: left;
+    white-space: nowrap;
+}
+
+.tablestyle {
+    font-size: xx-small;
+}
+
+.cardheader {
+    /* margin: 10px 0px 0px 0px !important; */
+    font-weight: bold; 
+    font-size: 24px;
+}
+
+.cardvalue {
+    font-size: 26px;
+}
+
+.search_button {
+    padding: 0px !important;
+    height: 36.5px;
+}
+
+/* .shiny-plot-output .shiny-bound-output{
+    height: auto !important;
+    overflow: visible !important;
+} */
