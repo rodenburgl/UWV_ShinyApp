@@ -19,25 +19,28 @@ app_ui = ui.page_navbar(
                      ui.p("Welcome to the UWV project!"),
                      ui.p("This is a demo application to calculate the premiums for sick leave."),
                      ui.p("First, we will show the problem this data science project addresses."),
-                    ui.card(
-                        ui.card_header("Business case"),
-                        ui.div(ui.output_plot('cb_premium_percentage_bar_chart'), style = "text-align: center; padding: 20px;")  # Connects to `@output cb_premium_percentage_bar_chart`
-                    ), 
-                    ui.card(
+                        ui.card(
                         ui.card_header("Sick Leave by Industry Over Time"),
                         ui.output_plot("sickleave_over_years")  # Connects to `@output sickleave_over_years`
-                    )),
+                        ),
+                        ui.card(
+                        ui.card_header("Business case"),
+                        ui.div(ui.output_plot('cb_premium_percentage_bar_chart'), style = "text-align: center; padding: 20px;")  # Connects to `@output cb_premium_percentage_bar_chart`
+                        )    
+                    ),
 
         # Screen 1 - Research
         ui.nav_panel("Research",
             ui.layout_sidebar(
                 ui.sidebar(
-                    ui.input_checkbox_group('checkbox_group',
-                                            'Models',
-                                            {'SARIMAX': 'SARIMAX', 'Black Box': 'Black Box', 'Combined': 'Combined', 'SeasonalWA': 'SeasonalWA', 'Y': 'Y'})),
+                    ui.input_checkbox_group(
+                        "selected_models",
+                        "Select models to display:",
+                        choices=["Predicted_RF", "Auto Arima", "WA"]
+                    )),
                 ui.card(
                     ui.card_header('Graph of models vs. actual'),
-                    ui.output_plot('modelgraph'))
+                    ui.output_plot('model_comparison'))
                 )),
 
         # Screen 2 - Calculate premium
@@ -233,6 +236,39 @@ def server(input, output, session):
         period = (2010, 2024)  # Adjust to your desired range or dynamically fetch
 
         return create_plot(categories, include_total, frequency, period)
+
+    @render.plot
+    def model_comparison():
+        df = config.df_model_comparison.copy()
+        df['TargetDate'] = pd.to_datetime(df['TargetDate'])
+
+        # Group by TargetDate and aggregate with mean
+        df = df.groupby('TargetDate').agg({
+            'Actual': 'mean',
+            'Predicted_RF': 'mean',
+            'Auto Arima': 'mean',
+            'WA': 'mean'
+        }).reset_index()
+
+        # Create figure
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.plot(df['TargetDate'], df['Actual'], label='Actual', color='black', linewidth=2)
+
+        # Plot selected models
+        for model_name in input.selected_models():
+            if model_name in df.columns:
+                ax.plot(df['TargetDate'], df[model_name], label=model_name, linestyle='--')
+
+        ax.set_title("Model Comparison")
+        ax.set_xlabel("Date")
+        ax.set_ylabel("Sick Leave %")
+        ax.legend()
+        ax.grid(True)
+        fig.tight_layout()
+
+        return fig
+
+
 
     @output
     @render.text

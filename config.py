@@ -36,6 +36,19 @@ table_styles = [
     }
 ]
 
+# Data for model comparison
+df_model_comparison = pd.read_csv(str_PathToResourceDataFolder / 'y_predictions_all_models.csv', sep=';', decimal = ",")
+
+# Convert 'TargetDate' to datetime
+df_model_comparison['TargetDate'] = pd.to_datetime(df_model_comparison['TargetDate'], errors='coerce')
+
+# List of columns to ensure are numeric
+numeric_cols = ['Actual', 'Predicted_RF', 'Auto Arima', 'WA']
+
+# Convert them to numeric, coercing errors to NaN
+for col in numeric_cols:
+    df_model_comparison[col] = pd.to_numeric(df_model_comparison[col], errors='coerce')
+
 # Mock data to use in table of premiums
 df_mock = pd.read_csv(str_PathToResourceDataFolder / 'mock_premiums.csv')
 df_mock['Year'] = df_mock['Period (Q)'].str[:4]
