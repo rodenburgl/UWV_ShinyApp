@@ -34,10 +34,25 @@ app_ui = ui.page_navbar(
             ui.layout_sidebar(
                 ui.sidebar(
                     ui.input_checkbox_group(
-                        "selected_models",
+                        "selected_baseline_models",
                         "Select models to display:",
-                        choices=["Predicted_RF", "Auto Arima", "WA"]
-                    )),
+                        choices=["Predicted_RF", "AutoARIMA", "WA"]
+                    ),
+                    ui.panel_conditional(
+                    "input.selected_baseline_models.includes('AutoARIMA')",
+                    ui.input_checkbox_group(
+                        "selected_sarimax_variants",
+                        "Select SARIMAX variants with features:",
+                        choices=[
+                            "AutoARIMA - COVID19",
+                            "AutoARIMA - Overweight",
+                            "AutoARIMA.- Happiness",
+                            "AutoARIMA - Financial difficulty"
+                        ],
+                        selected=[]
+                    )
+                )
+                    ),
                 ui.card(
                     ui.card_header('Graph of models vs. actual'),
                     ui.output_plot('model_comparison'))
@@ -242,33 +257,45 @@ def server(input, output, session):
         df = config.df_model_comparison.copy()
         df['TargetDate'] = pd.to_datetime(df['TargetDate'])
 
-        # Group by TargetDate and aggregate with mean
-        df = df.groupby('TargetDate').agg({
-            'Actual': 'mean',
-            'Predicted_RF': 'mean',
-            'Auto Arima': 'mean',
-            'WA': 'mean'
-        }).reset_index()
+        # Combine selected models and SARIMAX variants
+        selected_models = list(input.selected_baseline_models())
+        if "AutoARIMA" in selected_models:
+            selected_models.remove("AutoARIMA")
+            selected_models += list(input.selected_sarimax_variants())
 
-        # Create figure
+        # Filter only existing columns
+        existing_models = [m for m in selected_models if m in df.columns]
+        cols_to_plot = ['Actual'] + existing_models
+
+        # Group and aggregate
+        df = df.groupby('TargetDate')[cols_to_plot].mean().reset_index()
+
+        # Plotting
         fig, ax = plt.subplots(figsize=(10, 6))
         ax.plot(df['TargetDate'], df['Actual'], label='Actual', color='black', linewidth=2)
 
-        # Plot selected models
-        for model_name in input.selected_models():
-            if model_name in df.columns:
-                ax.plot(df['TargetDate'], df[model_name], label=model_name, linestyle='--')
+        # Define colors
+        colors = {
+            "Predicted_RF": "blue",
+            "WA": "green",
+            "AutoARIMA - No feature": "orange",
+            "AutoARIMA - COVID19": "red",
+            "AutoARIMA - Overweight": "purple",
+            "AutoARIMA.- Happiness": "brown",
+            "AutoARIMA - Financial difficulty": "pink"
+        }
+
+        # Add model lines
+        for model in existing_models:
+            ax.plot(df['TargetDate'], df[model], label=model, linestyle='--', color=colors.get(model, None))
 
         ax.set_title("Model Comparison")
-        ax.set_xlabel("Date")
+        ax.set_xlabel("Target Date")
         ax.set_ylabel("Sick Leave %")
         ax.legend()
         ax.grid(True)
         fig.tight_layout()
-
         return fig
-
-
 
     @output
     @render.text
