@@ -9,6 +9,11 @@ import pandas as pd
 import numpy as np
 
 # %%
+
+# Formatter function
+def to_percent(y, _):
+    return f'{y * 100:.0f}%'
+
 def create_plot(categories: list, totalincluded: bool, frequency: str, period: tuple):
     categories = [x for x in categories]
     if totalincluded:
@@ -22,26 +27,28 @@ def create_plot(categories: list, totalincluded: bool, frequency: str, period: t
                     (df['Frequency'] == frequency))]
 
 
-    categorylist = temp_df['BedrijfskenmerkenSBI2008'].unique().tolist()    
+    categorylist = temp_df['BedrijfskenmerkenSBI2008'].unique().tolist()
 
     # Dynamically calculate figure height
-    base_height = 8
-    additional_height_per_legend_row = 0.6
     legend_columns = 2
-    legend_rows = -(-len(categorylist) // legend_columns)  # Round up to calculate number of rows
-    figure_height = base_height + legend_rows * additional_height_per_legend_row
 
-    fig = plt.figure(figsize=(10, figure_height))
+    #fig = plt.figure(figsize=(10, figure_height))
+    fig = plt.figure()
+
     gs = GridSpec(2, 1, height_ratios=[1, 1], figure=fig)  # 2 rows: 3/4 for plot, 1/4 for legend
 
     maxvalue = getmaxvalue()
 
     ax = fig.add_subplot(gs[0])
-    ax.set_title('Sick leave % per industry')
+    ax.set_title('Sick leave % per business size over time')
     ax.set_xlabel('Period')
-    ax.set_ylabel(r'Sick leave in % of total working days')
+    ax.set_ylabel('Sick\nleave\n% of\ntotal\nworking\ndays',
+                  rotation=0,
+                  labelpad=25,
+                  ha='center',
+                  va='center')
     ax.set_yticks(range(0, int(maxvalue + 1), 1))
-    ax.set_ylim(top=maxvalue)
+    ax.set_yticklabels([str(x) + '%' for x in range(0, int(maxvalue + 1), 1)])
     ax.grid(visible=True, which='both', axis='y')
 
     for cat in categorylist:
@@ -55,7 +62,7 @@ def create_plot(categories: list, totalincluded: bool, frequency: str, period: t
         else:
             linestyle = '--'
             linewidth = 1
-        ax.plot(x_data, y_data, label = cat, linestyle=linestyle, linewidth=linewidth, marker='o')
+        ax.plot(x_data, y_data, label = cat, linestyle=linestyle, linewidth=linewidth, marker='o', markersize=3)
 
     ax_legend = fig.add_subplot(gs[1])
     ax_legend.axis('off')
@@ -66,10 +73,6 @@ def create_plot(categories: list, totalincluded: bool, frequency: str, period: t
 
     fig.tight_layout()
     ax.set_xticklabels(ax.get_xticklabels(), fontsize=6)  # Change fontsize to 12
-
-
-    #ax.legend(labels=categorylist, fontsize='small', loc='upper center', ncol=3)
-
     return fig
 
 
@@ -96,6 +99,8 @@ dict_replace = {' 1e kwartaal': 'Q1',
                 ' 2e kwartaal': 'Q2',
                 ' 3e kwartaal': 'Q3',
                 ' 4e kwartaal': 'Q4'}
+
+df['Perioden'] = df['Perioden'].str.strip()
 
 df['Perioden'] = df['Perioden'].replace(dict_replace, regex=True)
 

@@ -230,10 +230,12 @@ def server(input, output, session):
     @render.plot()
     def sickleave_over_years():
     # Example: select "Totaal gemiddelde", include it, frequency "Quarterly", full period
-        categories = ["Totaal gemiddeld"]  # Show only average
+        categories = ['1 tot 10 werkzame personen',
+                      '10 tot 100 werkzame personen',
+                      '100 of meer werkzame personen']  # Show only average
         include_total = True
-        frequency = "Annually"
-        period = (2010, 2024)  # Adjust to your desired range or dynamically fetch
+        frequency = "Quarterly"
+        period = (2022, 2024)  # Adjust to your desired range or dynamically fetch
 
         return create_plot(categories, include_total, frequency, period)
 
