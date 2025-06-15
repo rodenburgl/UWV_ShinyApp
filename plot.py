@@ -14,6 +14,58 @@ import numpy as np
 def to_percent(y, _):
     return f'{y * 100:.0f}%'
 
+def sick_leave_vs_premiums():
+    df_temp = config.df_sickleave_vs_premium
+    df_temp['Period'] = [str(x) for x in df_temp['Period']]
+
+    legend_columns = 2
+
+    #fig = plt.figure(figsize=(10, figure_height))
+    fig = plt.figure()
+
+    gs = GridSpec(2, 1, height_ratios=[1, 1], figure=fig)  # 2 rows: 3/4 for plot, 1/4 for legend
+
+    maxvalue = getmaxvalue()
+
+    ax = fig.add_subplot(gs[0])
+    ax.set_title('Actual sickleave % vs. premium sickleave %')
+    ax.set_xlabel('Period')
+    ax.set_ylabel('Sick\nleave\n% of\ntotal\nworking\ndays',
+                  rotation=0,
+                  labelpad=25,
+                  ha='center',
+                  va='center')
+    ax.set_yticks(range(0, int(maxvalue + 1), 1))
+    ax.set_yticklabels([str(x) + '%' for x in range(0, int(maxvalue + 1), 1)])
+    ax.grid(visible=True, which='both', axis='y')
+
+    categories = df_temp['Category'].unique()
+    colors = ['red', 'blue']
+    
+    for i in range(len(categories)):
+    # Draw small category
+        temp_df2 = df_temp[df_temp['Category'] == categories[i]]
+        x_data = temp_df2['Period']
+        y_data1 = temp_df2['Sickleave']
+        y_data2 = temp_df2['Premium']
+
+        ax.vlines(x=x_data, ymin=y_data1, ymax=y_data2, color=colors[i], linestyles=':')
+        ax.scatter(x=x_data, y=y_data2, color=colors[i], s=50, label=categories[i])
+        ax.scatter(x=x_data, y=y_data1, facecolors='none', edgecolors=colors[i], s=25)
+
+        #ax.plot(x_data, y_data, label = cat, marker='o', markersize=3)
+
+    ax_legend = fig.add_subplot(gs[1])
+    ax_legend.axis('off')
+
+    # Add the legend manually
+    handles, labels = ax.get_legend_handles_labels()
+    ax_legend.legend(handles, labels, loc='upper left', ncol=legend_columns)
+
+    fig.tight_layout()
+    ax.set_xticklabels(ax.get_xticklabels(), fontsize=6)  # Change fontsize to 12
+    return fig
+
 def create_plot(categories: list, totalincluded: bool, frequency: str, period: tuple):
     categories = [x for x in categories]
     if totalincluded:

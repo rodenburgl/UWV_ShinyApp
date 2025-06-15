@@ -6,7 +6,7 @@ import config
 from pathlib import Path
 from shiny import App, reactive, render, ui
 import matplotlib.pyplot as plt
-from plot import create_plot
+from plot import create_plot, sick_leave_vs_premiums
 import pandas as pd
 import datetime
 import seaborn as sns
@@ -22,6 +22,10 @@ app_ui = ui.page_navbar(
                         ui.card(
                         ui.card_header("Sick Leave by Industry Over Time"),
                         ui.output_plot("sickleave_over_years")  # Connects to `@output sickleave_over_years`
+                        ),
+                        ui.card(
+                        ui.card_header("Sick Leave premium vs. sick leave %"),
+                        ui.output_plot("sickleave_vs_premiums")
                         ),
                         ui.card(
                         ui.card_header("Business case"),
@@ -222,7 +226,7 @@ def server(input, output, session):
             ax.set_xlim(0, 300)
             # Optional: set specific x-axis ticks
             ax.set_xticks([0, 50, 100, 150, 200, 250, 300, 350])
-        
+
         return g.fig
         #plt.tight_layout()
 
@@ -238,6 +242,10 @@ def server(input, output, session):
         period = (2022, 2024)  # Adjust to your desired range or dynamically fetch
 
         return create_plot(categories, include_total, frequency, period)
+
+    @render.plot()
+    def sickleave_vs_premiums():
+        return sick_leave_vs_premiums()
 
     @render.plot
     def model_comparison():
