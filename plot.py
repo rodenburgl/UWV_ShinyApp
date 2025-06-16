@@ -47,6 +47,48 @@ def sick_leave_vs_premiums():
 
     return fig
 
+def premium_diff_man_woman():
+    df_temp = config.df_premium_diff_man_woman
+
+    fig, ax = plt.subplots()
+
+    ax.set_title('Premium spread man vs. woman')
+    ax.set_xlabel('Sick leave % of total working days')
+    ax.grid(visible=True, which='both', axis='x')
+
+    categories = df_temp['Category'].unique()
+    colors = ['red', 'blue', 'green']
+
+    for i in range(len(categories)):
+    # Draw small category
+        temp_df2 = df_temp[df_temp['Category'] == categories[i]]
+        x_data1 = temp_df2['Woman']
+        x_data2 = temp_df2['Man']
+        x_data3 = round((x_data1 + x_data2) / 2, 1)
+        y_data = temp_df2['Category']
+
+        ax.hlines(y=y_data, xmin=x_data1, xmax=x_data2, color=colors[0], linestyles=':')
+        ax.hlines(y=y_data, xmin=x_data2, xmax=x_data3, color=colors[2], linestyles=':')
+
+        legend1 = 'Woman only premium' if i == 0 else None
+        legend2 = 'Man only premium' if i == 0 else None
+        legend3 = 'Mixed premium' if i == 0 else None
+        
+        ax.scatter(x=x_data3, y=y_data, facecolors='none', edgecolors=colors[1], s=25, label=legend3)
+        ax.scatter(x=x_data1, y=y_data, color=colors[0], s=50, label=legend1)
+        ax.scatter(x=x_data2, y=y_data, color=colors[2], s=50, label=legend2)
+
+    ax.legend(loc='lower right')
+
+
+    ax.set_xticks(ax.get_xticks(), [str(x) + '%' for x in ax.get_xticks()])
+    ax.set_xticklabels(ax.get_xticklabels(), fontsize=6)
+
+    ax.set_axisbelow(True)
+    ax.set_ylim(-0.5, max(ax.get_yticks()) + 0.5)
+
+    return fig
+
 def create_plot(categories: list, totalincluded: bool, frequency: str, period: tuple):
     categories = [x for x in categories]
     if totalincluded:

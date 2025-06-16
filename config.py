@@ -86,3 +86,5 @@ dashboard_xlabel_graph = 'Year'
 dashboard_graph_title = 'Insurance payout vs. collected premiums'
 
 df_sickleave_vs_premium = pd.read_excel(str_PathToResourceDataFolder / 'premium_vs_sickleave.xlsx')
+df_premium_diff_man_woman = pd.read_excel(str_PathToResourceDataFolder / 'premium_diff_man_woman.xlsx')
+

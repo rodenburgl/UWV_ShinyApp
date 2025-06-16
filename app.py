@@ -6,7 +6,7 @@ import config
 from pathlib import Path
 from shiny import App, reactive, render, ui
 import matplotlib.pyplot as plt
-from plot import create_plot, sick_leave_vs_premiums
+from plot import create_plot, sick_leave_vs_premiums, premium_diff_man_woman
 import pandas as pd
 import datetime
 import seaborn as sns
@@ -28,8 +28,8 @@ app_ui = ui.page_navbar(
                         ui.output_plot("sickleave_vs_premiums")
                         ),
                         ui.card(
-                        ui.card_header("Business case"),
-                        ui.div(ui.output_plot('cb_premium_percentage_bar_chart'), style = "text-align: center; padding: 20px;")  # Connects to `@output cb_premium_percentage_bar_chart`
+                        ui.card_header("Premium spread"),
+                        ui.output_plot('plot_premium_diff_man_woman')
                         )    
                     ),
 
@@ -164,71 +164,8 @@ def server(input, output, session):
         #return render.DataGrid(config.df_mock)
 
     @render.plot
-    def cb_premium_percentage_bar_chart():
-        # Prepare data
-        df = config.df_business_case.copy()
-
-        # Group and average
-        df_summary = (
-            df.groupby(['Sectorgrootte', 'Age dominance', 'Gender dominance'])['Premie prijs_CB']
-            .mean()
-            .reset_index()
-            .rename(columns={
-                'Sectorgrootte': 'Company size',
-                'Premie prijs_CB': 'Average CB Premium (€)'
-            })
-        )
-
-        # Create a label for hue
-        df_summary["Age-Gender"] = df_summary["Age dominance"] + " / " + df_summary["Gender dominance"]
-
-        # Calculate relative premiums
-        df_summary["Relative Premium (%)"] = df_summary.groupby("Company size")["Average CB Premium (€)"].transform(
-            lambda x: (x / x.min() * 100).round(0).astype(int)
-        )
-
-        # Sort the dataframe by premium
-        df_summary = df_summary.sort_values(by=["Company size", "Relative Premium (%)"], ascending=[True, True])
-
-        # Set up the plot
-        g = sns.catplot(
-            data=df_summary,
-            kind="bar",
-            y="Age-Gender",
-            x="Relative Premium (%)",
-            col="Company size",
-            col_wrap=1,  # one column per subplot
-            height=20,
-            aspect=1.8,
-            palette="Set2",
-            sharex=False
-        )
-
-        # Add labels to bars
-        for ax in g.axes.flatten():
-            for p in ax.patches:
-                width = p.get_width()
-                ax.text(
-                    width - 5,  # shift left slightly
-                    p.get_y() + p.get_height() / 2,
-                    f'{int(width)}%',
-                    ha='right',
-                    va='center',
-                    color='black',
-                    fontsize=10
-                )
-
-        g.set_titles("Company Size: {col_name}")
-        g.set_axis_labels("Relative Premium (%) versus lowest per company size")
-        g.fig.subplots_adjust(hspace = 0.4, top=0.9)
-        g.fig.suptitle("Relative CB Premiums by Age and Gender (per Company Size)", fontsize=14)
-        for ax in g.axes.flatten():
-            ax.set_xlim(0, 300)
-            # Optional: set specific x-axis ticks
-            ax.set_xticks([0, 50, 100, 150, 200, 250, 300, 350])
-
-        return g.fig
-        #plt.tight_layout()
+    def plot_premium_diff_man_woman():
+        return premium_diff_man_woman()
 
 
     @render.plot()
