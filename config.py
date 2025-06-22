@@ -85,6 +85,10 @@ dashboard_ylabel_graph = 'EUR in millions'
 dashboard_xlabel_graph = 'Year'
 dashboard_graph_title = 'Insurance payout vs. collected premiums'
 
-df_sickleave_vs_premium = pd.read_excel(str_PathToResourceDataFolder / 'premium_vs_sickleave.xlsx')
-df_premium_diff_man_woman = pd.read_excel(str_PathToResourceDataFolder / 'premium_diff_man_woman.xlsx')
+df_sickleave_vs_premium = pd.read_csv(str_PathToResourceDataFolder / 'premium_vs_sickleave.csv', sep=';')
+df_sickleave_vs_premium['Sickleave'] = pd.to_numeric(df_sickleave_vs_premium['Sickleave'])
+df_sickleave_vs_premium['Premium'] = pd.to_numeric(df_sickleave_vs_premium['Premium'])
 
+df_premium_diff_man_woman = pd.read_csv(str_PathToResourceDataFolder / 'premium_diff_man_woman.csv', sep=';')
+df_premium_diff_man_woman['Man'] = pd.to_numeric(df_premium_diff_man_woman['Man'])
+df_premium_diff_man_woman['Woman'] = pd.to_numeric(df_premium_diff_man_woman['Woman'])
