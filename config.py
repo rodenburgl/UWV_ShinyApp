@@ -38,9 +38,16 @@ table_styles = [
 
 # Data for model comparison
 df_model_comparison = pd.read_csv(str_PathToResourceDataFolder / 'y_predictions_all_models.csv', sep=';', decimal = ",")
-
-# Convert 'TargetDate' to datetime
 df_model_comparison['TargetDate'] = pd.to_datetime(df_model_comparison['TargetDate'], errors='coerce')
+df_model_comparison["Bias_AutoARIMA"] = df_model_comparison["AutoARIMA - all features"] - df_model_comparison["Actual"]
+df_model_comparison["Bias_WA"] = df_model_comparison["WA"] - df_model_comparison["Actual"]
+df_model_comparison["Bias_RF"] = df_model_comparison["Predicted_RF"] - df_model_comparison["Actual"]
+#print(df_model_comparison[df_model_comparison["Sector"] == "K Financiële dienstverlening"].isna().sum())
+
+#calculate average bias per sector
+bias_by_sector = df_model_comparison.groupby("Sector")[["Bias_WA", "Bias_RF", "Bias_AutoARIMA"]].mean().reset_index()
+bias_by_sector.columns = ["Sector", "Avg_Bias_WA", "Avg_Bias_RF", "Avg_Bias_AutoARIMA"]
+#print(bias_by_sector.head(20))
 
 # List of columns to ensure are numeric
 numeric_cols = ['Actual', 'Predicted_RF', 'Auto Arima', 'WA']
@@ -79,6 +86,32 @@ df_business_case['Premie prijs_CB'] = pd.to_numeric(
         .str.strip(),
     errors='coerce'  # turn bad values into NaN
 )
+
+# import datatable for company size
+df_company_size = pd.read_csv(str_PathToResourceDataFolder / 'Sector_Size.csv', delimiter=';')
+
+# Calculate the bias cost per sector
+bias_wage_table = pd.merge(bias_by_sector, df_company_size, left_on="Sector", right_on="SBI", how="left")
+bias_wage_table["Financial risk RF"] = (bias_wage_table["Avg_Bias_RF"]/100) * bias_wage_table["Total Wage"]
+bias_wage_table["Financial risk AutoARIMA"] = (bias_wage_table["Avg_Bias_AutoARIMA"]/100) * bias_wage_table["Total Wage"]
+bias_wage_table["Financial risk WA"] = (bias_wage_table["Avg_Bias_WA"]/100) * bias_wage_table["Total Wage"]
+
+# Now safely compute totals
+total_risk_wa = bias_wage_table["Financial risk WA"].sum()
+total_risk_autoarima = bias_wage_table["Financial risk AutoARIMA"].sum()
+risk_reduction = total_risk_wa - total_risk_autoarima
+
+total_risks = {
+    "WA": total_risk_wa,
+    "AutoARIMA": total_risk_autoarima,
+    "Reduction": risk_reduction
+}
+
+bias_wage_table["Financial risk AutoARIMA"] = pd.to_numeric(bias_wage_table["Financial risk AutoARIMA"], errors='coerce')
+bias_wage_table["Financial risk WA"] = pd.to_numeric(bias_wage_table["Financial risk WA"], errors='coerce')
+#print(bias_wage_table[["Financial risk WA", "Financial risk AutoARIMA"]].dtypes)
+
+
 
 # Dashboard
 dashboard_ylabel_graph = 'EUR in millions'
