@@ -10,6 +10,7 @@ from plot import create_plot, sick_leave_vs_premiums, premium_diff_man_woman
 import pandas as pd
 import datetime
 import seaborn as sns
+from matplotlib.ticker import FuncFormatter
 
 
 app_ui = ui.page_navbar(
@@ -48,10 +49,8 @@ app_ui = ui.page_navbar(
                         "selected_sarimax_variants",
                         "Select SARIMAX variants with features:",
                         choices=[
-                            "AutoARIMA - COVID19",
-                            "AutoARIMA - Overweight",
-                            "AutoARIMA.- Happiness",
-                            "AutoARIMA - Financial difficulty"
+                            "AutoARIMA - no features",
+                            "AutoARIMA - all features"
                         ],
                         selected=[]
                     )
@@ -123,17 +122,28 @@ app_ui = ui.page_navbar(
         # Screen 4 - Management dashboard
         ui.nav_panel("Dashboard",
                 ui.layout_columns(
-                    ui.value_box(ui.div("Total numbers of insurances", class_='cardheader'), ui.div(f'{config.df_mock['Client'].unique().size:,}', class_="cardvalue"), showcase=icons['hashtag']),
-                    ui.value_box(ui.div("Total incoming premiums (annual)", class_='cardheader'), ui.div(f'{config.df_mock['Premium'].sum().round(0):,.0f}', class_='cardvalue'), showcase=icons['currency']),
-                    ui.value_box(ui.div("Estimated covered risk (annual)", class_='cardheader'), ui.div(f'{config.df_mock['Quarterly wage'].sum().round(0):,.0f}', class_='cardvalue'), showcase=icons['currency'])
+                        ui.value_box(
+                            ui.div("Total risk WA (annual)", class_='cardheader'),
+                            ui.div(f"€{config.total_risks['WA'] / 1_000_000:,.1f} mln", class_='cardvalue'),
+                            showcase=icons['currency']
+                        ),
+
+                        ui.value_box(
+                            ui.div("Total risk AutoARIMA (annual)", class_='cardheader'),
+                            ui.div(f"€{config.total_risks['AutoARIMA'] / 1_000_000:,.1f} mln", class_='cardvalue'),
+                            showcase=icons['currency']
+                        ),
+
+                        ui.value_box(
+                            ui.div("Risk reduction (annual)", class_='cardheader'),
+                            ui.div(f"€{config.total_risks['Reduction'] / 1_000_000:,.1f} mln", class_='cardvalue'),
+                            showcase=icons['currency']
+                        )
                     ),
                 ui.layout_columns(
                     ui.card(
-                        ui.div(ui.card_header('Premiums'), class_="cardheader"),
-                        ui.div(ui.output_data_frame('mock_dataframe'), class_='tablestyle')),
-                    ui.card(
-                        ui.card_header('Predictions vs. actuals'),
-                        ui.output_plot('linegraph'))
+                        ui.card_header('Financial risk per sector'),
+                        ui.output_plot('horizontal_bar_bias_comparison', height = "600px"))
                     ),
                 ui.layout_columns(
                     ui.card(
@@ -191,7 +201,7 @@ def server(input, output, session):
                       '100 of meer werkzame personen']  # Show only average
         include_total = True
         frequency = "Quarterly"
-        period = (2022, 2024)  # Adjust to your desired range or dynamically fetch
+        period = (2014, 2024)  # Adjust to your desired range or dynamically fetch
 
         return create_plot(categories, include_total, frequency, period)
 
@@ -327,6 +337,43 @@ def server(input, output, session):
         premium_monthly = Premium_total / 12
 
         return f"{premium_monthly:,.2f}"
+
+    @render.plot
+    def horizontal_bar_bias_comparison():
+        import matplotlib.pyplot as plt
+
+        # Copy and sort data
+        df = config.bias_wage_table.copy()
+        df = df.sort_values("Sector")  # alphabetical sort
+
+        sectors = df["Sector"]
+        wa_risk = pd.to_numeric(df["Financial risk WA"], errors="coerce")
+        autoARIMA_risk = pd.to_numeric(df["Financial risk AutoARIMA"], errors="coerce")
+        y_pos = range(len(sectors))
+
+        fig, ax = plt.subplots(figsize=(15, len(sectors) * 0.5))
+
+        # Grey background bars (WA bias)
+        ax.barh(y_pos, wa_risk, color='lightgrey', edgecolor='black', height=0.6, label="WA")
+
+        # Colored overlay bars (AutoARIMA bias)
+        ax.barh(y_pos, autoARIMA_risk, color='steelblue', height=0.4, label="AutoARIMA", alpha=0.9)
+
+        ax.set_yticks(y_pos)
+        ax.set_yticklabels(sectors)
+        ax.set_title("Financial risk per Sector: AutoARIMA vs WA")
+        ax.xaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x/1_000_000:.1f}'))
+        ax.set_xlabel("Financial Risk (in millions of EUR)")
+        ax.legend()
+        ax.grid(axis='x', linestyle='--', alpha=0.7)
+
+        # Remove spines for cleaner look
+        for spine in ['top', 'right', 'left']:
+            ax.spines[spine].set_visible(False)
+
+        fig.tight_layout()
+        return fig
+
 
     @render.plot()
     def scatter():
