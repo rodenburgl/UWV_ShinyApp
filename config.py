@@ -89,7 +89,7 @@ df_sickleave_vs_premium = pd.read_csv(str_PathToResourceDataFolder / 'premium_vs
 df_sickleave_vs_premium['Sickleave'] = pd.to_numeric(df_sickleave_vs_premium['Sickleave'])
 df_sickleave_vs_premium['Premium'] = pd.to_numeric(df_sickleave_vs_premium['Premium'])
 
-df_premium_diff_man_woman = pd.read_csv(str_PathToResourceDataFolder / 'premium_diff_man_woman.csv', sep=';')
+df_premium_diff_man_woman = pd.read_csv(str_PathToResourceDataFolder / 'Premium_diff_man_woman.csv', sep=';')
 df_premium_diff_man_woman['Man'] = pd.to_numeric(df_premium_diff_man_woman['Man'])
 df_premium_diff_man_woman['Woman'] = pd.to_numeric(df_premium_diff_man_woman['Woman'])
 
