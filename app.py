@@ -120,7 +120,7 @@ app_ui = ui.page_navbar(
         #             ),
 
         # Screen 4 - Management dashboard
-        ui.nav_panel("Dashboard",
+        ui.nav_panel("Financial risk",
                 ui.layout_columns(
                         ui.value_box(
                             ui.div("Total risk WA (annual)", class_='cardheader'),
