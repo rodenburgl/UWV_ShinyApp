@@ -94,16 +94,16 @@ app_ui = ui.page_navbar(
                                 ui.input_task_button(id="Confirm_premium_Button", label="Confirm premium"),
                                 style="text-align: right; padding-right: 20px;"
                             )),
-        # Screen 3 - Premium details
-        ui.nav_panel("Premium details",
-                        ui.card(
-                            ui.div(ui.card_header('Premium requests'), class_="cardheader"),
-                            ui.div(ui.output_data_frame('data_store_output'), class_='tablestyle')),
-                        ui.div(
-                            ui.card(
-                                ui.card_header('Last 2 years sickleave'),
-                                ui.output_plot('Sickleave_P2Y')))
-                    ),
+        # # Screen 3 - Premium details
+        # ui.nav_panel("Premium details",
+        #                 ui.card(
+        #                     ui.div(ui.card_header('Premium requests'), class_="cardheader"),
+        #                     ui.div(ui.output_data_frame('data_store_output'), class_='tablestyle')),
+        #                 ui.div(
+        #                     ui.card(
+        #                         ui.card_header('Last 2 years sickleave'),
+        #                         ui.output_plot('Sickleave_P2Y')))
+        #             ),
 
         # Screen 4 - Management dashboard
         ui.nav_panel("Dashboard",
@@ -176,7 +176,7 @@ def server(input, output, session):
                       '100 of meer werkzame personen']  # Show only average
         include_total = True
         frequency = "Quarterly"
-        period = (2022, 2024)  # Adjust to your desired range or dynamically fetch
+        period = (2018, 2024)  # Adjust to your desired range or dynamically fetch
 
         return create_plot(categories, include_total, frequency, period)
 
