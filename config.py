@@ -38,7 +38,7 @@ table_styles = [
 
 # Data for model comparison
 df_model_comparison = pd.read_csv(str_PathToResourceDataFolder / 'y_predictions_all_models.csv', sep=';', decimal = ",")
-df_model_comparison['TargetDate'] = pd.to_datetime(df_model_comparison['TargetDate'], errors='coerce')
+df_model_comparison['TargetDate'] = pd.to_datetime(df_model_comparison['TargetDate'], errors='coerce', format="%d/%m/%Y %H:%M")
 df_model_comparison["Bias_AutoARIMA"] = df_model_comparison["AutoARIMA - all features"] - df_model_comparison["Actual"]
 df_model_comparison["Bias_WA"] = df_model_comparison["WA"] - df_model_comparison["Actual"]
 df_model_comparison["Bias_RF"] = df_model_comparison["Predicted_RF"] - df_model_comparison["Actual"]

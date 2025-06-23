@@ -11,6 +11,8 @@ import pandas as pd
 import datetime
 import seaborn as sns
 from matplotlib.ticker import FuncFormatter
+import matplotlib.dates as mdates
+import numpy as np
 
 
 app_ui = ui.page_navbar(
@@ -123,19 +125,19 @@ app_ui = ui.page_navbar(
         ui.nav_panel("Financial risk",
                 ui.layout_columns(
                         ui.value_box(
-                            ui.div("Total risk WA (annual)", class_='cardheader'),
+                            ui.div("Total risk WA", class_='cardheader'),
                             ui.div(f"€{config.total_risks['WA'] / 1_000_000:,.1f} mln", class_='cardvalue'),
                             showcase=icons['currency']
                         ),
 
                         ui.value_box(
-                            ui.div("Total risk AutoARIMA (annual)", class_='cardheader'),
+                            ui.div("Total risk AutoARIMA", class_='cardheader'),
                             ui.div(f"€{config.total_risks['AutoARIMA'] / 1_000_000:,.1f} mln", class_='cardvalue'),
                             showcase=icons['currency']
                         ),
 
                         ui.value_box(
-                            ui.div("Risk reduction (annual)", class_='cardheader'),
+                            ui.div("Risk reduction", class_='cardheader'),
                             ui.div(f"€{config.total_risks['Reduction'] / 1_000_000:,.1f} mln", class_='cardvalue'),
                             showcase=icons['currency']
                         )
@@ -143,14 +145,17 @@ app_ui = ui.page_navbar(
                 ui.layout_columns(
                     ui.card(
                         ui.card_header('Financial risk per sector'),
-                        ui.output_plot('horizontal_bar_bias_comparison', height = "600px"))
+                        ui.output_plot('horizontal_bar_bias_comparison', height = "650px"))
                     ),
                 ui.layout_columns(
                     ui.card(
-                        ui.card_header('Blank')),
+                        ui.card_header('Scatter plot'),
+                        ui.output_plot('scatter')),
+                    ),
+                ui.layout_columns(
                     ui.card(
                         ui.card_header('Scatter plot'),
-                        ui.output_plot('scatter'))
+                        ui.output_plot('scatter2')),
                     )
             ),
 
@@ -362,10 +367,12 @@ def server(input, output, session):
         ax.set_yticks(y_pos)
         ax.set_yticklabels(sectors)
         ax.set_title("Financial risk per Sector: AutoARIMA vs WA")
-        ax.xaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x/1_000_000:.1f}'))
+        ax.xaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x/1_000_000:.0f}'))
         ax.set_xlabel("Financial Risk (in millions of EUR)")
         ax.legend()
         ax.grid(axis='x', linestyle='--', alpha=0.7)
+        ax.invert_yaxis()
+        ax.set_xlim(left= -140000000, right = 20000000)
 
         # Remove spines for cleaner look
         for spine in ['top', 'right', 'left']:
@@ -374,29 +381,81 @@ def server(input, output, session):
         fig.tight_layout()
         return fig
 
-
     @render.plot()
     def scatter():
+        df = config.df_model_comparison.copy()
+        
+        # Extract time info
+        df["Quarter"] = df["TargetDate"].dt.quarter
+        df["Year"] = df["TargetDate"].dt.year
+        df["QuarterLabel"] = "Q" + df["Quarter"].astype(str)
+        df["QuarterStart"] = df["TargetDate"].dt.to_period("Q").dt.to_timestamp()
+        
+        fig, ax = plt.subplots(figsize=(10, 5))
 
-        fig, ax = plt.subplots()
+        # Plot both errors
+        ax.scatter(df["TargetDate"], df["Bias_AutoARIMA"], label="AutoARIMA", color='blue', s=50, alpha=0.6)
+        ax.scatter(df["TargetDate"], df["Bias_WA"], label="WA", color='red', marker='x', s=50, alpha=0.6)
 
-        temp_df = config.df_predictions.groupby(by=['Year', 'Size'])['Error'].sum().reset_index()
+        # Y-axis
+        ax.set_ylabel("Error")
+        ax.set_ylim(-1.6, 1.6)
+        ax.set_yticks(np.arange(-1.6, 1.7, 0.2))
+        ax.grid(True, axis='y', linestyle='--', linewidth=0.5)
 
-        sizes = temp_df['Size'].unique()
+        # X-axis: only show ticks at start of each quarter
+        unique_quarters = df.drop_duplicates("QuarterStart")
+        ax.set_xticks(unique_quarters["QuarterStart"])
+        xtick_labels = [f"{q}\n{y}" for q, y in zip(unique_quarters["QuarterLabel"], unique_quarters["Year"])]
+        ax.set_xticklabels(xtick_labels, rotation=0, ha='center', fontsize=8)
 
-        for size in sizes:
-            y = temp_df[temp_df['Size'] == size]['Error']
-            x = temp_df[temp_df['Size'] == size]['Year']
-            ax.scatter(x=x, y=y)
-
-        ax.set_xlabel('Sick leave %')
-        ax.spines['top'].set_visible(False)
-        ax.spines['bottom'].set_visible(False)
-        ax.set_ylabel('Error')
-        ax.set_title('Historical error based on actual sickleave %')
-        ax.axhline('0', color='black', linewidth=0.5)
+        # Title & Legend
+        ax.set_title("Quarterly error based on actual sickleave %")
+        ax.axhline(0, color='black', linewidth=0.5)
+        ax.legend()
 
         return fig
+
+    @render.plot()
+    def scatter2():
+        # Step 1: Prepare the data
+        df = config.df_model_comparison.copy()
+        
+        # Resample quarterly average errors
+        df.set_index("TargetDate", inplace=True)
+        quarterly_df = df.resample("Q")[["Bias_AutoARIMA", "Bias_WA"]].mean().reset_index()
+        quarterly_df["Quarter"] = quarterly_df["TargetDate"].dt.quarter
+        quarterly_df["Year"] = quarterly_df["TargetDate"].dt.year
+        quarterly_df["QuarterLabel"] = "Q" + quarterly_df["Quarter"].astype(str)
+        
+        # Step 2: Create the plot
+        fig, ax = plt.subplots(figsize=(10, 5))
+
+        # Plot AutoARIMA errors
+        ax.scatter(quarterly_df["TargetDate"], quarterly_df["Bias_AutoARIMA"], label="AutoARIMA", color='blue', s=50)
+        # Plot WA model errors
+        ax.scatter(quarterly_df["TargetDate"], quarterly_df["Bias_WA"], label="WA", color='red', marker='x', s=50)
+
+        # Y-axis settings
+        ax.set_ylim(-1.6, 1.6)
+        ax.set_yticks(np.arange(-1.6, 1.7, 0.2))  # or 0.1 if you want finer steps
+        ax.grid(True, axis='y', linestyle='--', linewidth=0.5, alpha=0.7)
+
+        # X-axis formatting
+        ax.set_xticks(quarterly_df["TargetDate"])
+        quarter_labels = quarterly_df["QuarterLabel"]
+        year_labels = quarterly_df["Year"].astype(str)
+        # Combine quarter + year in 2-line labels
+        xtick_labels = [f"{q}\n{y}" for q, y in zip(quarter_labels, year_labels)]
+        ax.set_xticklabels(xtick_labels, rotation=0, ha='center', fontsize=8)
+
+        # Title & Legend
+        ax.set_title("Quarterly error based on actual sickleave %")
+        ax.axhline(0, color='black', linewidth=0.5)
+        ax.legend()
+
+        return fig
+
 
     @render.plot()
     def linegraph():
