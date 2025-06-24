@@ -156,10 +156,24 @@ app_ui = ui.page_navbar(
                     ui.card(
                         ui.card_header('Scatter plot'),
                         ui.output_plot('scatter2')),
+                    ),
+                ui.layout_columns(
+                    ui.card(
+                        ui.card_header('Scatter plot'),
+                        ui.output_plot('mae_plot')),
                     )
             ),
 
         # Screen 5 - Settings
+        ui.nav_panel("Competitiveness", 
+            ui.p("This is the competitiveness pane, where you can compare the premiums provided to customers with those of competitors."),
+                ui.layout_columns(
+                    ui.card(
+                        ui.card_header('Premium difference plot'),
+                        ui.output_plot('premium_by_dominance')),
+                    )),
+
+        # Screen 6 - Settings
         ui.nav_panel("Settings", 
             ui.p("This is the settings pane, where you can change important parameters for the calculation of the premiums provided to customers."),
             ui.card(
@@ -380,41 +394,83 @@ def server(input, output, session):
 
         fig.tight_layout()
         return fig
-
+    
     @render.plot()
     def scatter():
         df = config.df_model_comparison.copy()
-        
-        # Extract time info
-        df["Quarter"] = df["TargetDate"].dt.quarter
-        df["Year"] = df["TargetDate"].dt.year
-        df["QuarterLabel"] = "Q" + df["Quarter"].astype(str)
-        df["QuarterStart"] = df["TargetDate"].dt.to_period("Q").dt.to_timestamp()
-        
-        fig, ax = plt.subplots(figsize=(10, 5))
 
-        # Plot both errors
-        ax.scatter(df["TargetDate"], df["Bias_AutoARIMA"], label="AutoARIMA", color='blue', s=50, alpha=0.6)
-        ax.scatter(df["TargetDate"], df["Bias_WA"], label="WA", color='red', marker='x', s=50, alpha=0.6)
+        # Extract time info
+        df["QuarterStart"] = df["TargetDate"].dt.to_period("Q").dt.to_timestamp()
+        df["QuarterLabel"] = df["TargetDate"].dt.to_period("Q").astype(str)  # e.g., '2023Q1'
+
+        # Sort for consistent plotting
+        df.sort_values("QuarterStart", inplace=True)
+        quarters = df["QuarterStart"].unique()
+        
+        # Prepare box plot data
+        autoarima_data = [df[df["QuarterStart"] == q]["Bias_AutoARIMA"] for q in quarters]
+        wa_data        = [df[df["QuarterStart"] == q]["Bias_WA"] for q in quarters]
+        
+        fig, ax = plt.subplots(figsize=(12, 5))
+
+        # Positions: stagger boxplots for each quarter
+        positions_auto = np.arange(len(quarters)) - 0.2
+        positions_wa   = np.arange(len(quarters)) + 0.2
+
+        # Boxplots
+        bp1 = ax.boxplot(autoarima_data, positions=positions_auto, widths=0.3, patch_artist=True,
+                        boxprops=dict(facecolor='blue', alpha=0.5), medianprops=dict(color='black'), showfliers=False)
+        
+        bp2 = ax.boxplot(wa_data, positions=positions_wa, widths=0.3, patch_artist=True,
+                        boxprops=dict(facecolor='red', alpha=0.5), medianprops=dict(color='black'), showfliers=False)
+
+        # X-axis
+        ax.set_xticks(np.arange(len(quarters)))
+        ax.set_xticklabels([q.strftime("Q%q\n%Y") for q in quarters], rotation=0, fontsize=8, ha='center')
 
         # Y-axis
         ax.set_ylabel("Error")
-        ax.set_ylim(-1.6, 1.6)
-        ax.set_yticks(np.arange(-1.6, 1.7, 0.2))
+        ax.set_ylim(-2, 2)
+        ax.set_yticks(np.arange(-2.1, 2.1, 0.2))
         ax.grid(True, axis='y', linestyle='--', linewidth=0.5)
-
-        # X-axis: only show ticks at start of each quarter
-        unique_quarters = df.drop_duplicates("QuarterStart")
-        ax.set_xticks(unique_quarters["QuarterStart"])
-        xtick_labels = [f"{q}\n{y}" for q, y in zip(unique_quarters["QuarterLabel"], unique_quarters["Year"])]
-        ax.set_xticklabels(xtick_labels, rotation=0, ha='center', fontsize=8)
 
         # Title & Legend
         ax.set_title("Quarterly error based on actual sickleave %")
         ax.axhline(0, color='black', linewidth=0.5)
-        ax.legend()
+        ax.legend([bp1["boxes"][0], bp2["boxes"][0]], ["AutoARIMA", "WA"], loc='upper right')
 
         return fig
+
+    @render.plot()
+    def mae_plot():
+        df = config.df_model_comparison.copy()
+
+        # Extract quarter info
+        df["QuarterStart"] = df["TargetDate"].dt.to_period("Q").dt.to_timestamp()
+
+        # Calculate MAE per quarter
+        mae_df = df.groupby("QuarterStart").agg({
+            "Bias_AutoARIMA": lambda x: np.mean(np.abs(x)),
+            "Bias_WA": lambda x: np.mean(np.abs(x)),
+        }).reset_index()
+
+        fig, ax = plt.subplots(figsize=(10, 5))
+
+        ax.plot(mae_df["QuarterStart"], mae_df["Bias_AutoARIMA"], label="AutoARIMA", marker='o', color='blue')
+        ax.plot(mae_df["QuarterStart"], mae_df["Bias_WA"], label="WA", marker='x', color='red')
+
+        # Format x-axis
+        ax.set_xticks(mae_df["QuarterStart"])
+        ax.set_xticklabels([q.strftime("Q%q\n%Y") for q in mae_df["QuarterStart"]], rotation=0, ha='center', fontsize=8)
+
+        ax.set_ylabel("Mean Absolute Error")
+        ax.set_ylim(0, max(mae_df[["Bias_AutoARIMA", "Bias_WA"]].max()) * 1.1)
+        ax.grid(True, axis='y', linestyle='--', linewidth=0.5)
+
+        ax.set_title("Quarterly Mean Absolute Error (MAE) per Model")
+        ax.legend()
+        return fig
+
 
     @render.plot()
     def scatter2():
@@ -585,5 +641,45 @@ def server(input, output, session):
     @render.data_frame
     def data_store_output():
         return render.DataGrid(data_store.get(), styles=config.table_styles)
+    
+    @render.plot()
+    def premium_by_dominance():
+        df = config.df_business_case.copy()
+
+        for col in ["Premie prijs_CB", "UWV_Premium_Price"]:
+            df[col] = (
+                df[col]
+                .astype(str)
+                .str.replace("€", "", regex=False)
+                .str.replace(".", "", regex=False)   # Then remove thousand dots
+                .str.replace(",", ".", regex=False)  # Replace decimal comma
+                .str.strip()
+                .astype(float)
+                    )
+
+        # Group by Gender Dominance and Age Dominance separately
+        gender_group = df.groupby("Gender dominance")[["Premie prijs_CB", "UWV_Premium_Price"]].mean().reset_index()
+        age_group = df.groupby("Age dominance")[["Premie prijs_CB", "UWV_Premium_Price"]].mean().reset_index()
+
+        fig, axs = plt.subplots(1, 2, figsize=(12, 5), sharey=True)
+
+        # Plot 1: Gender Dominance
+        axs[0].bar(gender_group["Gender dominance"], gender_group["Premie prijs_CB"], label="CB", alpha=0.6, color="gray")
+        axs[0].bar(gender_group["Gender dominance"], gender_group["UWV_Premium_Price"], label="UWV", alpha=0.6, color="blue", width=0.4)
+        axs[0].set_title("Premium by Gender Dominance")
+        axs[0].set_ylabel("Average Premium (€)")
+        axs[0].legend()
+
+        # Plot 2: Age Dominance
+        axs[1].bar(age_group["Age dominance"], age_group["Premie prijs_CB"], label="CB", alpha=0.6, color="gray")
+        axs[1].bar(age_group["Age dominance"], age_group["UWV_Premium_Price"], label="UWV", alpha=0.6, color="blue", width=0.4)
+        axs[1].set_title("Premium by Age Dominance")
+
+        fig.suptitle("Average Premium Price Comparison: CB vs UWV", fontsize=14)
+        fig.tight_layout()
+
+        return fig
+
+
 
 app = App(app_ui, server, static_assets=config.str_PathToResourceDataFolder)
