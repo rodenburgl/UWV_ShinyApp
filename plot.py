@@ -58,6 +58,7 @@ def premium_diff_man_woman():
 
     categories = df_temp['Category'].unique()
     colors = ['red', 'blue', 'green']
+    linewidth = 3
 
     for i in range(len(categories)):
     # Draw small category
@@ -67,16 +68,16 @@ def premium_diff_man_woman():
         x_data3 = round((x_data1 + x_data2) / 2, 1)
         y_data = temp_df2['Category']
 
-        ax.hlines(y=y_data, xmin=x_data1, xmax=x_data2, color=colors[0], linestyles=':')
-        ax.hlines(y=y_data, xmin=x_data2, xmax=x_data3, color=colors[2], linestyles=':')
+        ax.hlines(y=y_data, xmin=x_data3, xmax=x_data1, color=colors[0], linestyles=':', linewidth=linewidth)
+        ax.hlines(y=y_data, xmin=x_data2, xmax=x_data3, color=colors[2], linestyles=':', linewidth=linewidth)
 
         legend1 = 'Woman only premium' if i == 0 else None
         legend2 = 'Man only premium' if i == 0 else None
         legend3 = 'Mixed premium' if i == 0 else None
-        
-        ax.scatter(x=x_data3, y=y_data, facecolors='none', edgecolors=colors[1], s=25, label=legend3)
-        ax.scatter(x=x_data1, y=y_data, color=colors[0], s=50, label=legend1)
-        ax.scatter(x=x_data2, y=y_data, color=colors[2], s=50, label=legend2)
+
+        ax.scatter(x=x_data3, y=y_data, facecolors='none', edgecolors=colors[1], s=75, label=legend3)
+        ax.scatter(x=x_data1, y=y_data, color=colors[0], s=100, label=legend1)
+        ax.scatter(x=x_data2, y=y_data, color=colors[2], s=100, label=legend2)
 
     ax.legend(loc='lower right')
 
