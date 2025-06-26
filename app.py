@@ -13,6 +13,7 @@ import seaborn as sns
 from matplotlib.ticker import FuncFormatter
 import matplotlib.dates as mdates
 import numpy as np
+from itertools import product
 
 
 app_ui = ui.page_navbar(
@@ -24,7 +25,7 @@ app_ui = ui.page_navbar(
                      ui.p("First, we will show the problem this data science project addresses."),
                         ui.card(
                         ui.card_header("Sick Leave by Industry Over Time"),
-                        ui.output_plot("sickleave_over_years")  # Connects to `@output sickleave_over_years`
+                        ui.output_plot("sickleave_over_years"), height = "700px"
                         ),
                         ui.card(
                         ui.card_header("Sick Leave premium vs. sick leave %"),
@@ -164,14 +165,17 @@ app_ui = ui.page_navbar(
                     )
             ),
 
-        # Screen 5 - Settings
+        # Screen 5 - Competitiveness
         ui.nav_panel("Competitiveness", 
             ui.p("This is the competitiveness pane, where you can compare the premiums provided to customers with those of competitors."),
                 ui.layout_columns(
                     ui.card(
                         ui.card_header('Premium difference plot'),
-                        ui.output_plot('premium_by_dominance')),
-                    )),
+                        ui.layout_columns(
+                            ui.output_plot("small_pp_chart"),
+                            ui.output_plot("medium_pp_chart")
+    )),
+                    height = "600px")),
 
         # Screen 6 - Settings
         ui.nav_panel("Settings", 
@@ -641,45 +645,86 @@ def server(input, output, session):
     @render.data_frame
     def data_store_output():
         return render.DataGrid(data_store.get(), styles=config.table_styles)
-    
-    @render.plot()
-    def premium_by_dominance():
-        df = config.df_business_case.copy()
 
-        for col in ["Premie prijs_CB", "UWV_Premium_Price"]:
-            df[col] = (
-                df[col]
-                .astype(str)
+    def euro_to_float(series: pd.Series) -> pd.Series:
+        return (
+            series.astype(str)
                 .str.replace("€", "", regex=False)
-                .str.replace(".", "", regex=False)   # Then remove thousand dots
-                .str.replace(",", ".", regex=False)  # Replace decimal comma
+                .str.replace(".", "", regex=False)    # thousands dot
+                .str.replace(",", ".", regex=False)   # decimal comma → dot
                 .str.strip()
                 .astype(float)
-                    )
+    )
 
-        # Group by Gender Dominance and Age Dominance separately
-        gender_group = df.groupby("Gender dominance")[["Premie prijs_CB", "UWV_Premium_Price"]].mean().reset_index()
-        age_group = df.groupby("Age dominance")[["Premie prijs_CB", "UWV_Premium_Price"]].mean().reset_index()
+    def bar_pp_for_size(df, size_label, title_suffix):
+        sub = df[df["Sectorgrootte"] == size_label].copy()
+        #print(sub['Sectorgrootte','UWV_PP'].head(10))
+        # build nested x-axis label  Age | Gender
+        sub["Xlabel"] = (
+            sub["Age dominance"].str.title() + " | " +
+            sub["Gender dominance"].str.title()
+        )
 
-        fig, axs = plt.subplots(1, 2, figsize=(12, 5), sharey=True)
+        # aggregate to mean per-employee price
+        agg = (
+            sub.groupby("Xlabel")[["CB_pp", "UWV_pp"]]
+                .mean()
+                .reset_index()
+                .melt(id_vars="Xlabel",
+                    value_vars=["CB_pp", "UWV_pp"],
+                    var_name="Provider",
+                    value_name="Price_pp")
+        )
+        agg["Provider"] = agg["Provider"].map({"CB_pp": "CB", "UWV_pp": "UWV"})
 
-        # Plot 1: Gender Dominance
-        axs[0].bar(gender_group["Gender dominance"], gender_group["Premie prijs_CB"], label="CB", alpha=0.6, color="gray")
-        axs[0].bar(gender_group["Gender dominance"], gender_group["UWV_Premium_Price"], label="UWV", alpha=0.6, color="blue", width=0.4)
-        axs[0].set_title("Premium by Gender Dominance")
-        axs[0].set_ylabel("Average Premium (€)")
-        axs[0].legend()
+        # --- draw ---
+        sns.set(style="white")
+        fig, ax = plt.subplots(figsize=(9, 4))
+        sns.barplot(
+            data=agg,
+            x="Xlabel", y="Price_pp",
+            hue="Provider",
+            palette=["gray", "steelblue"],
+            ax=ax
+        )
 
-        # Plot 2: Age Dominance
-        axs[1].bar(age_group["Age dominance"], age_group["Premie prijs_CB"], label="CB", alpha=0.6, color="gray")
-        axs[1].bar(age_group["Age dominance"], age_group["UWV_Premium_Price"], label="UWV", alpha=0.6, color="blue", width=0.4)
-        axs[1].set_title("Premium by Age Dominance")
-
-        fig.suptitle("Average Premium Price Comparison: CB vs UWV", fontsize=14)
+        ax.set_ylabel("Average premium per employee (€)")
+        ax.set_xlabel("")
+        ax.set_title(f"UWV vs CB – per-employee premium ({title_suffix})")
+        ax.set_ylim(0, 6000)
+        ax.set_yticklabels("")
+        ax.legend(title="")
+        ax.bar_label(ax.containers[0], fmt="€{:.0f}", padding=2, fontsize=7)
+        ax.bar_label(ax.containers[1], fmt="€{:.0f}", padding=2, fontsize=7)
+        ax.set_xticklabels(ax.get_xticklabels(), rotation=45, ha="right", fontsize=8)
         fig.tight_layout()
-
         return fig
 
+    @render.plot()
+    def small_pp_chart():
+        df = config.df_business_case.copy()
+
+        # clean € columns once
+        df["CB_pp"]  = euro_to_float(df["Premie prijs/pp_CB"])
+        df["UWV_pp"] = euro_to_float(df["UWV_Premium_Price/PP"])
+
+        return bar_pp_for_size(
+            df,
+            size_label=" 1 tot 10 werkzame personen ",   # ← small
+            title_suffix="Small enterprises"
+        )
+
+    @render.plot()
+    def medium_pp_chart():
+        df = config.df_business_case.copy()
+        df["CB_pp"]  = euro_to_float(df["Premie prijs/pp_CB"])
+        df["UWV_pp"] = euro_to_float(df["UWV_Premium_Price/PP"])
+
+        return bar_pp_for_size(
+            df,
+            size_label="10 tot 100 werkzame personen", # ← medium
+            title_suffix="Medium enterprises"
+        )
 
 
 app = App(app_ui, server, static_assets=config.str_PathToResourceDataFolder)

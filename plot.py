@@ -108,8 +108,7 @@ def create_plot(categories: list, totalincluded: bool, frequency: str, period: t
     legend_columns = 2
 
     #fig = plt.figure(figsize=(10, figure_height))
-    fig = plt.figure()
-
+    fig = plt.figure(figsize=(10, 6))  # 10 inches wide, 6 inches tall
     gs = GridSpec(2, 1, height_ratios=[1, 1], figure=fig)  # 2 rows: 3/4 for plot, 1/4 for legend
 
     maxvalue = getmaxvalue()
@@ -145,7 +144,6 @@ def create_plot(categories: list, totalincluded: bool, frequency: str, period: t
     # Add the legend manually
     handles, labels = ax.get_legend_handles_labels()
     ax_legend.legend(handles, labels, loc='upper left', ncol=legend_columns)
-
     fig.tight_layout()
     ax.set_xticklabels(ax.get_xticklabels(), fontsize=6)  # Change fontsize to 12
     return fig
