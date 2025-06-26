@@ -34,13 +34,22 @@ def sick_leave_vs_premiums():
         x_data2 = temp_df2['Premium']
         y_data = temp_df2['Category']
 
-        ax.hlines(y=y_data, xmin=x_data1, xmax=x_data2, color=colors[i], linestyles=':')
+        ax.hlines(y=y_data, xmin=x_data1, xmax=x_data2, color=colors[0], linestyles=':', linewidth=3, zorder=1)
 
-        ax.scatter(x=x_data1, y=y_data, facecolors='none', edgecolors=colors[i], s=25)
-        ax.scatter(x=x_data2, y=y_data, color=colors[i], s=50, label=categories[i])
+        legend1 = 'Actual sickleave' if i == 0 else None
+        legend2 = 'Premium sickleave (Mixed premium)' if i == 0 else None
 
-    ax.set_xticks(ax.get_xticks(), [str(x) + '%' for x in ax.get_xticks()])
+        ax.scatter(x=x_data1, y=y_data, color=colors[0], s=100, zorder=2, label=legend1)
+        ax.scatter(x=x_data2, y=y_data, color=colors[1], s=75, zorder=2, label=legend2)
+
+    ax.legend(loc='lower right')
+
+    ticks = [2, 3, 4, 5, 6, 7, 8]
+    ax.set_xticks(ticks, [str(x) + '%' for x in ticks])
+    #ax.set_xticks(ax.get_xticks(), [str(x) + '%' for x in ax.get_xticks()])
     ax.set_xticklabels(ax.get_xticklabels(), fontsize=6)
+
+    #ax.legend(loc='lower right')
 
     ax.set_axisbelow(True)
     ax.set_ylim(-0.5, max(ax.get_yticks()) + 0.5)
@@ -68,21 +77,22 @@ def premium_diff_man_woman():
         x_data3 = round((x_data1 + x_data2) / 2, 1)
         y_data = temp_df2['Category']
 
-        ax.hlines(y=y_data, xmin=x_data3, xmax=x_data1, color=colors[0], linestyles=':', linewidth=linewidth)
-        ax.hlines(y=y_data, xmin=x_data2, xmax=x_data3, color=colors[2], linestyles=':', linewidth=linewidth)
+        ax.hlines(y=y_data, xmin=x_data3, xmax=x_data1, color=colors[0], linestyles=':', linewidth=linewidth, zorder=1)
+        ax.hlines(y=y_data, xmin=x_data2, xmax=x_data3, color=colors[2], linestyles=':', linewidth=linewidth, zorder=1)
 
         legend1 = 'Woman only premium' if i == 0 else None
         legend2 = 'Man only premium' if i == 0 else None
         legend3 = 'Mixed premium' if i == 0 else None
 
-        ax.scatter(x=x_data3, y=y_data, facecolors='none', edgecolors=colors[1], s=75, label=legend3)
-        ax.scatter(x=x_data1, y=y_data, color=colors[0], s=100, label=legend1)
-        ax.scatter(x=x_data2, y=y_data, color=colors[2], s=100, label=legend2)
+        ax.scatter(x=x_data3, y=y_data, color=colors[1], s=75, label=legend3, zorder=2)
+        ax.scatter(x=x_data1, y=y_data, color=colors[0], s=100, label=legend1, zorder=2)
+        ax.scatter(x=x_data2, y=y_data, color=colors[2], s=100, label=legend2, zorder=2)
 
     ax.legend(loc='lower right')
 
-
-    ax.set_xticks(ax.get_xticks(), [str(x) + '%' for x in ax.get_xticks()])
+    ticks = [2, 3, 4, 5, 6, 7, 8]
+    ax.set_xticks(ticks, [str(x) + '%' for x in ticks])
+    #ax.set_xticks(ax.get_xticks(), [str(x) + '%' for x in ax.get_xticks()])
     ax.set_xticklabels(ax.get_xticklabels(), fontsize=6)
 
     ax.set_axisbelow(True)
