@@ -224,7 +224,7 @@ def server(input, output, session):
                       '100 of meer werkzame personen']  # Show only average
         include_total = True
         frequency = "Quarterly"
-        period = (2018, 2024)  # Adjust to your desired range or dynamically fetch
+        period = (2019, 2024)  # Adjust to your desired range or dynamically fetch
 
         return create_plot(categories, include_total, frequency, period)
 
