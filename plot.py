@@ -115,17 +115,10 @@ def create_plot(categories: list, totalincluded: bool, frequency: str, period: t
 
     categorylist = temp_df['BedrijfskenmerkenSBI2008'].unique().tolist()
 
-    # Dynamically calculate figure height
-    legend_columns = 2
-
-    #fig = plt.figure(figsize=(10, figure_height))
-    fig = plt.figure()
-
-    gs = GridSpec(2, 1, height_ratios=[1, 1], figure=fig)  # 2 rows: 3/4 for plot, 1/4 for legend
+    fig, ax = plt.subplots()
 
     maxvalue = getmaxvalue()
 
-    ax = fig.add_subplot(gs[0])
     ax.set_title('Sick leave % per business size over time')
     ax.set_xlabel('Period')
     ax.set_ylabel('Sick\nleave\n% of\ntotal\nworking\ndays',
@@ -150,12 +143,12 @@ def create_plot(categories: list, totalincluded: bool, frequency: str, period: t
             linewidth = 1
         ax.plot(x_data, y_data, label = cat, linestyle=linestyle, linewidth=linewidth, marker='o', markersize=3)
 
-    ax_legend = fig.add_subplot(gs[1])
-    ax_legend.axis('off')
+    ax.legend(ncol=2)
+    # ax_legend.axis('off')
 
-    # Add the legend manually
-    handles, labels = ax.get_legend_handles_labels()
-    ax_legend.legend(handles, labels, loc='upper left', ncol=legend_columns)
+    # # Add the legend manually
+    # handles, labels = ax.get_legend_handles_labels()
+    # ax_legend.legend(handles, labels, loc='upper left', ncol=legend_columns)
 
     fig.tight_layout()
     ax.set_xticklabels(ax.get_xticklabels(), fontsize=6)  # Change fontsize to 12
