@@ -62,7 +62,17 @@ app_ui = ui.page_navbar(
                 ui.card(
                     ui.card_header('Graph of models vs. actual'),
                     ui.output_plot('model_comparison'))
-                )),
+                ),
+                ui.layout_columns(
+                    ui.card(
+                        ui.card_header('Scatter plot'),
+                        ui.output_plot('scatter2')),
+                    ),
+                ui.layout_columns(
+                    ui.card(
+                        ui.card_header('Scatter plot'),
+                        ui.output_plot('mae_plot')),
+                    )),
 
         # Screen 2 - Calculate premium
         ui.nav_panel("Calculate premium",
@@ -147,21 +157,6 @@ app_ui = ui.page_navbar(
                     ui.card(
                         ui.card_header('Financial risk per sector'),
                         ui.output_plot('horizontal_bar_bias_comparison', height = "650px"))
-                    ),
-                ui.layout_columns(
-                    ui.card(
-                        ui.card_header('Scatter plot'),
-                        ui.output_plot('scatter')),
-                    ),
-                ui.layout_columns(
-                    ui.card(
-                        ui.card_header('Scatter plot'),
-                        ui.output_plot('scatter2')),
-                    ),
-                ui.layout_columns(
-                    ui.card(
-                        ui.card_header('Scatter plot'),
-                        ui.output_plot('mae_plot')),
                     )
             ),
 
@@ -398,52 +393,6 @@ def server(input, output, session):
 
         fig.tight_layout()
         return fig
-    
-    @render.plot()
-    def scatter():
-        df = config.df_model_comparison.copy()
-
-        # Extract time info
-        df["QuarterStart"] = df["TargetDate"].dt.to_period("Q").dt.to_timestamp()
-        df["QuarterLabel"] = df["TargetDate"].dt.to_period("Q").astype(str)  # e.g., '2023Q1'
-
-        # Sort for consistent plotting
-        df.sort_values("QuarterStart", inplace=True)
-        quarters = df["QuarterStart"].unique()
-        
-        # Prepare box plot data
-        autoarima_data = [df[df["QuarterStart"] == q]["Bias_AutoARIMA"] for q in quarters]
-        wa_data        = [df[df["QuarterStart"] == q]["Bias_WA"] for q in quarters]
-        
-        fig, ax = plt.subplots(figsize=(12, 5))
-
-        # Positions: stagger boxplots for each quarter
-        positions_auto = np.arange(len(quarters)) - 0.2
-        positions_wa   = np.arange(len(quarters)) + 0.2
-
-        # Boxplots
-        bp1 = ax.boxplot(autoarima_data, positions=positions_auto, widths=0.3, patch_artist=True,
-                        boxprops=dict(facecolor='blue', alpha=0.5), medianprops=dict(color='black'), showfliers=False)
-        
-        bp2 = ax.boxplot(wa_data, positions=positions_wa, widths=0.3, patch_artist=True,
-                        boxprops=dict(facecolor='red', alpha=0.5), medianprops=dict(color='black'), showfliers=False)
-
-        # X-axis
-        ax.set_xticks(np.arange(len(quarters)))
-        ax.set_xticklabels([q.strftime("Q%q\n%Y") for q in quarters], rotation=0, fontsize=8, ha='center')
-
-        # Y-axis
-        ax.set_ylabel("Error")
-        ax.set_ylim(-2, 2)
-        ax.set_yticks(np.arange(-2.1, 2.1, 0.2))
-        ax.grid(True, axis='y', linestyle='--', linewidth=0.5)
-
-        # Title & Legend
-        ax.set_title("Quarterly error based on actual sickleave %")
-        ax.axhline(0, color='black', linewidth=0.5)
-        ax.legend([bp1["boxes"][0], bp2["boxes"][0]], ["AutoARIMA", "WA"], loc='upper right')
-
-        return fig
 
     @render.plot()
     def mae_plot():
@@ -457,15 +406,22 @@ def server(input, output, session):
             "Bias_AutoARIMA": lambda x: np.mean(np.abs(x)),
             "Bias_WA": lambda x: np.mean(np.abs(x)),
         }).reset_index()
-
+        quarter_num = mae_df["QuarterStart"].dt.quarter
+        mae_df["QuarterLabel"] = "Q" + quarter_num.astype(str)        
+        
         fig, ax = plt.subplots(figsize=(10, 5))
 
         ax.plot(mae_df["QuarterStart"], mae_df["Bias_AutoARIMA"], label="AutoARIMA", marker='o', color='blue')
         ax.plot(mae_df["QuarterStart"], mae_df["Bias_WA"], label="WA", marker='x', color='red')
 
-        # Format x-axis
+        # X-axis formatting
         ax.set_xticks(mae_df["QuarterStart"])
-        ax.set_xticklabels([q.strftime("Q%q\n%Y") for q in mae_df["QuarterStart"]], rotation=0, ha='center', fontsize=8)
+        quarter_labels = mae_df["QuarterLabel"]
+        mae_df["Year"] = mae_df["QuarterStart"].dt.year
+        year_labels = mae_df["Year"].astype(str)
+        # Combine quarter + year in 2-line labels
+        xtick_labels = [f"{q}\n{y}" for q, y in zip(quarter_labels, year_labels)]
+        ax.set_xticklabels(xtick_labels, rotation=0, ha='center', fontsize=8)
 
         ax.set_ylabel("Mean Absolute Error")
         ax.set_ylim(0, max(mae_df[["Bias_AutoARIMA", "Bias_WA"]].max()) * 1.1)
